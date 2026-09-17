@@ -1,7 +1,11 @@
 "use client";
 
 import { Row, SegmentedControl, Section, Stepper, Toggle } from "@/components/ui/fields";
-import { MAX_SECONDS, MIN_SECONDS } from "@/lib/settings/defaults";
+import {
+  MAX_SECONDS,
+  MAX_WARN_SECONDS,
+  MIN_SECONDS,
+} from "@/lib/settings/defaults";
 import { setMaxSeconds, updateTimerSettings } from "@/lib/settings/store";
 import { useSettings } from "@/lib/settings/use-settings";
 import { useCapabilities } from "@/lib/util/capabilities";
@@ -44,14 +48,14 @@ export function TimerSettings() {
       </div>
 
       <Row
-        label="Count-in cues"
-        hint="How many seconds of ticks before the alarm."
+        label="Count-in tones"
+        hint="Rising tones over the final seconds. Capped at three — beyond that they stop rising and turn into ticking."
         control={
           <Stepper
             label="count-in seconds"
             value={timer.warnAtSeconds}
             min={0}
-            max={10}
+            max={MAX_WARN_SECONDS}
             suffix="s"
             onChange={(warnAtSeconds) => updateTimerSettings({ warnAtSeconds })}
           />
@@ -78,7 +82,7 @@ export function TimerSettings() {
         label="Vibrate on cues"
         hint={
           vibrationSupported
-            ? "Buzzes on the count-in and at zero."
+            ? "Buzzes on the count-in tones and at zero."
             : "Not available on iPhone — Safari doesn't support vibration at all."
         }
         control={

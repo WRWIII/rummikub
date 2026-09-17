@@ -37,6 +37,25 @@ interface NavigatorWithAudioSession extends Navigator {
   audioSession?: { type: string };
 }
 
+/**
+ * The looping-silent-element trick promotes the whole page's audio session,
+ * and it is the only thing in this app that plays continuously. It exists
+ * solely to get past the iPhone ring/silent switch on iOS 16 and older, where
+ * `navigator.audioSession` doesn't exist yet.
+ *
+ * Nowhere else has that switch, so running it anywhere else buys nothing and
+ * leaves an <audio> element looping for the whole session. Gated tightly.
+ *
+ * iPadOS 13+ reports itself as "MacIntel"; a real Mac reports 0 touch points.
+ */
+function needsSilentElementFallback(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return (
+    /iP(hone|ad|od)/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
+
 function createContext(): AudioContext {
   const Ctor =
     window.AudioContext ??
@@ -97,7 +116,7 @@ export function unlockAudio(bypassSilentSwitch: boolean): AudioContext | null {
       } catch {
         /* older WebKit exposes it read-only */
       }
-    } else if (!silentEl) {
+    } else if (!silentEl && needsSilentElementFallback()) {
       // iOS 16 and older. This works because it promotes the whole page's
       // audio session, not because <audio> elements are magic. The file must
       // be genuinely silent — setting .volume = 0 does nothing on iOS.

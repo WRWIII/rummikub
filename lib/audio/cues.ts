@@ -7,6 +7,46 @@ import type { CueId, Settings, SoundSource } from "@/lib/settings/types";
 /** Small offset so we never try to schedule in the past. */
 const LEAD_TIME = 0.05;
 
+/**
+ * Silence between repeats of the alarm. Without a real gap three bursts run
+ * into each other and read as one long buzz instead of three.
+ */
+const ALARM_REST = 0.3;
+
+/**
+ * How long one firing of a cue lasts: the last pulse's onset plus however long
+ * that pulse rings for. Measured rather than hardcoded so a custom preset or
+ * an uploaded file spaces its repeats correctly too.
+ */
+function cueSpanSeconds(cue: SoundSource): number {
+  const tail =
+    cue.kind === "sample"
+      ? // The buffer isn't decoded yet on the very first turn; half a second
+        // is a safe stand-in, and every later turn measures it properly.
+        (getCachedBuffer(cue.assetId)?.duration ?? 0.5)
+      : PRESETS[cue.preset].duration;
+  return (cue.pulses.count - 1) * cue.pulses.interval + tail;
+}
+
+/**
+ * Schedule the time-up alarm `repeats` times from `at`, and hand back every
+ * handle so a tap can silence the lot.
+ */
+export function scheduleAlarm(
+  ctx: AudioContext,
+  dest: AudioNode,
+  cue: SoundSource,
+  at: number,
+  repeats: number,
+): Handle[] {
+  const step = cueSpanSeconds(cue) + ALARM_REST;
+  const handles: Handle[] = [];
+  for (let i = 0; i < repeats; i++) {
+    handles.push(...playCue(ctx, dest, cue, at + i * step, 0));
+  }
+  return handles;
+}
+
 function semitonesToRatio(semitones: number): number {
   return Math.pow(2, semitones / 12);
 }
@@ -111,7 +151,15 @@ export function scheduleTurn(
     handles.push(...playCue(ctx, dest, settings.sound.cues.tick, when, warnAt - n));
   }
 
-  handles.push(...playCue(ctx, dest, settings.sound.cues.alarm, zero, 0));
+  handles.push(
+    ...scheduleAlarm(
+      ctx,
+      dest,
+      settings.sound.cues.alarm,
+      zero,
+      settings.sound.alarmRepeats,
+    ),
+  );
 
   return handles;
 }

@@ -49,8 +49,11 @@ export function TimerTile({
   const expired = status === "expired";
 
   return (
+    // The tile is the screen. Width-led on a phone (92vw), height-capped so it
+    // still fits whole in landscape, and capped in rem so it stops growing
+    // absurdly on a desktop.
     <div
-      className={`tile relative aspect-[3/4] w-[min(72vw,20rem)] rounded-[1.75rem] transition-transform ${
+      className={`tile relative aspect-[3/4] w-[min(92vw,56vh,26rem)] rounded-[2.25rem] transition-transform ${
         pulsing ? "pulsing" : ""
       }`}
       style={{ color: TONE_VAR[tone] }}
@@ -67,7 +70,7 @@ export function TimerTile({
           <span
             id={id}
             suppressHydrationWarning
-            className="numerals absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 text-[clamp(5rem,27vw,9.5rem)] font-bold leading-none"
+            className="numerals absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 text-[clamp(5rem,min(38vw,23vh),11rem)] font-bold leading-none"
           >
             {seconds}
           </span>

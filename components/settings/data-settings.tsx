@@ -40,7 +40,9 @@ export function DataSettings() {
     const state = matchStore.get();
     const payload = {
       kind: "rummikub-turn-timer",
-      v: 1,
+      // 2: the count-in cue changed shape. A v1 backup's sound cues are
+      // dropped on import — see the note on VERSION in settings/store.ts.
+      v: 2,
       exportedAt: new Date().toISOString(),
       settings: settingsStore.get(),
       match: state.status === "ready" ? state.match : null,
@@ -61,7 +63,9 @@ export function DataSettings() {
     setMessage(null);
     try {
       const parsed = JSON.parse(await file.text());
-      if (parsed?.settings) settingsStore.set(migrateSettings(parsed.settings));
+      if (parsed?.settings) {
+        settingsStore.set(migrateSettings(parsed.settings, Number(parsed.v) || 1));
+      }
       if (parsed?.match) importMatch(parsed.match);
       setMessage("Restored.");
     } catch {

@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { TrashIcon } from "@/components/ui/icons";
 import { PRESETS, PRESET_IDS, type PresetId } from "@/lib/audio/presets";
-import { playCue, preloadCues } from "@/lib/audio/cues";
+import { playCue, preloadCues, scheduleAlarm } from "@/lib/audio/cues";
 import type { Handle } from "@/lib/audio/synth";
 import {
   getContext,
@@ -33,7 +33,12 @@ import {
 } from "@/lib/settings/store";
 import { useSettings } from "@/lib/settings/use-settings";
 import { DEFAULT_SETTINGS } from "@/lib/settings/defaults";
-import type { CueId, SoundSource } from "@/lib/settings/types";
+import {
+  ALARM_REPEAT_CHOICES,
+  type AlarmRepeats,
+  type CueId,
+  type SoundSource,
+} from "@/lib/settings/types";
 
 export function SoundSettings() {
   const settings = useSettings();
@@ -83,8 +88,8 @@ export function SoundSettings() {
 
       <CueEditor
         cueId="tick"
-        title="Count-in ticks"
-        description="Plays through the final seconds, rising in pitch as it goes."
+        title="Count-in tones"
+        description="Three tones over the final seconds, rising in pitch as they go. The only sound before the alarm."
       />
       <CueEditor
         cueId="alarm"
@@ -137,7 +142,12 @@ function CueEditor({
         preview.current.push(...playCue(ctx, master, cue, at + i * 0.6, i));
       }
     } else {
-      preview.current.push(...playCue(ctx, master, cue, at, 0));
+      // Preview what a real time-up sounds like, repeats and all — otherwise
+      // the choice between once and three times can only be tested by
+      // sitting through a whole turn.
+      preview.current.push(
+        ...scheduleAlarm(ctx, master, cue, at, current.sound.alarmRepeats),
+      );
     }
   };
 
@@ -160,7 +170,10 @@ function CueEditor({
         assetId: record.id,
         fileName: record.name,
         volume: cue.volume,
-        pulses: cue.pulses,
+        // Not cue.pulses: that would inherit the synth preset's burst pattern
+        // and play the file several times over. updateCue enforces this too —
+        // it is spelled out here so the inheritance isn't re-added by hand.
+        pulses: { count: 1, interval: 0 },
         ladder: cue.ladder,
       });
       await preloadCues(ctx, settingsStore.get());
@@ -261,6 +274,28 @@ function CueEditor({
           />
         }
       />
+
+      {cueId === "alarm" && (
+        <Row
+          label="Repeat"
+          hint="Three is for a table loud enough to talk over one. Any tap stops it."
+          control={
+            <SegmentedControl
+              label="Alarm repeats"
+              value={String(settings.sound.alarmRepeats)}
+              options={ALARM_REPEAT_CHOICES.map((repeats) => ({
+                value: String(repeats),
+                label: repeats === 1 ? "Once" : `${repeats}×`,
+              }))}
+              onChange={(next) =>
+                updateSoundSettings({
+                  alarmRepeats: Number(next) as AlarmRepeats,
+                })
+              }
+            />
+          }
+        />
+      )}
 
       <div className="flex flex-wrap items-center gap-2 px-4 py-3">
         <Button

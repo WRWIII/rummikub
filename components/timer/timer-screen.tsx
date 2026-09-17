@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, type PointerEvent } from "react";
 import { TimerTile, type TileTone } from "./timer-tile";
-import { DrainBar } from "./drain-bar";
 import { useTimerSnapshot } from "@/lib/timer/use-timer";
 import { poke } from "@/lib/timer/engine";
 import { unlockAudio } from "@/lib/audio/engine";
@@ -20,6 +19,14 @@ import {
 /** Below this the numeral goes orange — "you're running out". */
 const CLOSE_SECONDS = 10;
 
+/**
+ * One tile on felt, and nothing else.
+ *
+ * No instructions, no progress bar, no labels: the whole screen is the
+ * gesture, so anything drawn beside the tile is just something competing with
+ * it. The navigation icons are deliberately faint — they need to be findable,
+ * not noticed.
+ */
 export function TimerScreen() {
   const timer = useTimerSnapshot();
   const muted = useStore(
@@ -76,42 +83,37 @@ export function TimerScreen() {
         />
       )}
 
-      <header className="relative z-10 flex items-center justify-between px-4 pt-3">
+      <header className="relative z-10 flex items-center justify-between px-2 pt-1">
         <IconButton
           label={muted ? "Unmute cues" : "Mute cues"}
           onActivate={toggleMuted}
           active={muted}
         >
           {muted ? (
-            <SoundOffIcon className="h-6 w-6" />
+            <SoundOffIcon className="h-[1.15rem] w-[1.15rem]" />
           ) : (
-            <SoundOnIcon className="h-6 w-6" />
+            <SoundOnIcon className="h-[1.15rem] w-[1.15rem]" />
           )}
         </IconButton>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center">
           <IconLink href="/score" label="Scores">
-            <ScoreIcon className="h-6 w-6" />
+            <ScoreIcon className="h-[1.15rem] w-[1.15rem]" />
           </IconLink>
           <IconLink href="/settings" label="Settings">
-            <SettingsIcon className="h-6 w-6" />
+            <SettingsIcon className="h-[1.15rem] w-[1.15rem]" />
           </IconLink>
         </div>
       </header>
 
-      <main className="relative z-10 flex flex-1 flex-col items-center justify-center gap-6">
+      {/* -mt-2 pulls the tile back to the optical centre of the screen: the
+          header above it has no counterweight below. */}
+      <main className="relative z-10 -mt-2 flex flex-1 items-center justify-center">
         <TimerTile
           seconds={timer.displaySeconds}
           tone={tone}
           status={timer.status}
           pulsing={inWarning}
-        />
-
-        <DrainBar
-          status={timer.status}
-          startedAt={timer.startedAt}
-          maxMs={timer.maxMs}
-          runId={timer.runId}
         />
 
         {/* Screen-reader announcement, throttled to the cue window so it
@@ -124,16 +126,6 @@ export function TimerScreen() {
               : ""}
         </span>
       </main>
-
-      <footer className="relative z-10 pb-6 text-center">
-        <p className="text-sm font-medium tracking-wide text-tile-face/55">
-          {timer.status === "idle"
-            ? "Tap anywhere to start"
-            : timer.status === "expired"
-              ? "Time — tap for the next turn"
-              : "Tap anywhere for the next turn"}
-        </p>
-      </footer>
     </div>
   );
 }
@@ -142,9 +134,13 @@ export function TimerScreen() {
    Chrome controls.
 
    Every one of these stops the pointerdown from reaching the tap surface, so
-   reaching for settings never resets someone's turn. 48px hit areas because
-   this gets used with the phone flat on a table.
+   reaching for settings never resets someone's turn. The hit areas stay at
+   44px even though the glyphs are small — this gets used with the phone flat
+   on a table, and a faint icon still has to be easy to hit.
 -------------------------------------------------------------------------- */
+
+const ICON_BUTTON =
+  "flex h-11 w-11 items-center justify-center rounded-full transition-colors";
 
 function IconButton({
   label,
@@ -167,10 +163,10 @@ function IconButton({
         if (!event.isPrimary) return;
         onActivate();
       }}
-      className={`flex h-12 w-12 items-center justify-center rounded-full transition-colors ${
+      className={`${ICON_BUTTON} ${
         active
-          ? "bg-ink-red/85 text-tile-face"
-          : "text-tile-face/70 active:bg-white/10"
+          ? "text-ink-red/90"
+          : "text-tile-face/30 active:text-tile-face/60"
       }`}
     >
       {children}
@@ -192,7 +188,7 @@ function IconLink({
       href={href}
       aria-label={label}
       onPointerDown={(event) => event.stopPropagation()}
-      className="flex h-12 w-12 items-center justify-center rounded-full text-tile-face/70 active:bg-white/10"
+      className={`${ICON_BUTTON} text-tile-face/30 active:text-tile-face/60`}
     >
       {children}
     </Link>

@@ -24,7 +24,7 @@ import {
 import { cancelHandles, preloadCues, scheduleTurn } from "@/lib/audio/cues";
 import type { Handle } from "@/lib/audio/synth";
 import { settingsStore } from "@/lib/settings/store";
-import { ALARM_PATTERN, TICK_PATTERN, vibrate } from "@/lib/util/haptics";
+import { TICK_PATTERN, alarmPattern, vibrate } from "@/lib/util/haptics";
 
 /**
  * Mounted once from the root layout, so it survives every navigation. Renders
@@ -80,7 +80,9 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
 
     const unsubscribeExpire = onExpire(() => {
       const settings = settingsStore.get();
-      if (settings.timer.haptics) vibrate(ALARM_PATTERN);
+      if (settings.timer.haptics) {
+        vibrate(alarmPattern(settings.sound.alarmRepeats));
+      }
       // Don't hold the screen on all evening once the turn is over.
       void releaseWakeLock();
     });

@@ -44,9 +44,17 @@ export interface TimerSettings {
   haptics: boolean;
 }
 
+/**
+ * How many times the time-up alarm fires. Once is the polite default; three is
+ * for a noisy table where one burst gets talked over.
+ */
+export const ALARM_REPEAT_CHOICES = [1, 3] as const;
+export type AlarmRepeats = (typeof ALARM_REPEAT_CHOICES)[number];
+
 export interface SoundSettings {
   muted: boolean;
   masterVolume: number;
+  alarmRepeats: AlarmRepeats;
   /**
    * Claim the iOS `playback` audio session so the alarm is audible with the
    * ring/silent switch flipped. The cost is real and must be surfaced in the

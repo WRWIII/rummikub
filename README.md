@@ -2,7 +2,8 @@
 
 A full-screen turn timer and scorekeeper for Rummikub, built to sit on a phone in
 the middle of the table. Tap anywhere to start your turn; the next player taps to
-reset it. Ticks through the last three seconds, sounds an alarm at zero.
+reset it. Three rising tones over the last seconds, then an alarm at zero —
+once, or three times, whichever you set.
 
 Ships as a static export — the same build deploys unchanged to Vercel or
 Cloudflare, installs to a home screen, and works with no signal.
@@ -124,7 +125,9 @@ Android debugs properly over `chrome://inspect`.
 
 The things most worth testing by hand, because they're where the bugs hide:
 
-- Tap at 2s remaining — no stale 1-second tick should fire afterwards.
+- Tap at 2s remaining — no stale 1-second tone should fire afterwards.
+- Set the alarm to three repeats, then tap during the second burst; the third
+  must not fire.
 - Background the app at 5s remaining and return at 2s; display and cues should
   both reconcile.
 - Flip the ringer switch on an iPhone and confirm the alarm still sounds.

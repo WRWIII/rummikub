@@ -8,10 +8,29 @@ import {
   subscribeToKey,
 } from "@/lib/persist/local-storage";
 import { PRESETS, type PresetId } from "@/lib/audio/presets";
-import { DEFAULT_SETTINGS, MAX_SECONDS, MIN_SECONDS } from "./defaults";
-import type { CueId, Settings, SoundSource } from "./types";
+import {
+  DEFAULT_SETTINGS,
+  MAX_SECONDS,
+  MAX_WARN_SECONDS,
+  MIN_SECONDS,
+} from "./defaults";
+import {
+  ALARM_REPEAT_CHOICES,
+  type AlarmRepeats,
+  type CueId,
+  type PulsePattern,
+  type Settings,
+  type SoundSource,
+} from "./types";
 
-const VERSION = 1;
+/**
+ * 2: the count-in became three rising tones with a hard cap at the ladder
+ *    length. v1 allowed up to ten seconds of count-in on a three-step ladder,
+ *    which played the same clicky square-wave beep once a second — a ticking
+ *    clock. v1 cue overrides are therefore dropped rather than carried
+ *    forward; the turn length and the rest of the settings survive.
+ */
+const VERSION = 2;
 
 /** OscillatorType minus "custom", which needs a PeriodicWave we never build. */
 export const WAVEFORMS = ["sine", "square", "sawtooth", "triangle"] as const;
@@ -26,6 +45,22 @@ export const WAVEFORMS = ["sine", "square", "sawtooth", "triangle"] as const;
 
 function clamp(n: number, lo: number, hi: number): number {
   return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : lo;
+}
+
+/**
+ * `pulses` exists to build a burst out of a synth blip — the buzzer's four
+ * pulses 0.22s apart are what make it go bzzt-bzzt-bzzt-bzzt. A file the user
+ * uploaded is already a finished sound, so firing it four times just plays
+ * four overlapping copies, and there is no UI to turn that off.
+ *
+ * So: a sample is always exactly one firing. How many times the alarm sounds
+ * is the alarmRepeats setting's job, and only that setting's job.
+ */
+const SAMPLE_PULSES: PulsePattern = { count: 1, interval: 0 };
+
+/** Applied on every write and every read, so no path can reintroduce it. */
+function normaliseCue(cue: SoundSource): SoundSource {
+  return cue.kind === "sample" ? { ...cue, pulses: { ...SAMPLE_PULSES } } : cue;
 }
 
 function coerceCue(raw: unknown, fallback: SoundSource): SoundSource {
@@ -46,14 +81,17 @@ function coerceCue(raw: unknown, fallback: SoundSource): SoundSource {
     : undefined;
 
   if (r.kind === "sample" && typeof r.assetId === "string") {
-    return {
+    // Anyone who uploaded a file before this invariant existed has a stored
+    // pulse count of 4 inherited from the buzzer. Normalising on read fixes
+    // them in place, with no version bump needed.
+    return normaliseCue({
       kind: "sample",
       assetId: r.assetId,
       fileName: typeof r.fileName === "string" ? r.fileName : "Custom sound",
       volume,
       pulses,
       ladder,
-    };
+    });
   }
 
   const preset = (
@@ -73,12 +111,16 @@ function coerceCue(raw: unknown, fallback: SoundSource): SoundSource {
   };
 }
 
-export function migrateSettings(raw: unknown): Settings {
+export function migrateSettings(raw: unknown, storedVersion = VERSION): Settings {
   if (typeof raw !== "object" || raw === null) return DEFAULT_SETTINGS;
   const r = raw as Record<string, unknown>;
   const timer = (r.timer ?? {}) as Record<string, unknown>;
   const sound = (r.sound ?? {}) as Record<string, unknown>;
-  const cues = (sound.cues ?? {}) as Record<string, unknown>;
+  // v1 cues are deliberately discarded — see the note on VERSION.
+  const cues = (storedVersion >= 2 ? (sound.cues ?? {}) : {}) as Record<
+    string,
+    unknown
+  >;
 
   return {
     v: 1,
@@ -95,13 +137,26 @@ export function migrateSettings(raw: unknown): Settings {
             (n): n is number => typeof n === "number" && n > 0,
           )
         : [...DEFAULT_SETTINGS.timer.presetSeconds],
-      warnAtSeconds: Math.round(clamp(Number(timer.warnAtSeconds ?? 3), 0, 10)),
+      warnAtSeconds: Math.round(
+        clamp(
+          Number(timer.warnAtSeconds ?? DEFAULT_SETTINGS.timer.warnAtSeconds),
+          0,
+          MAX_WARN_SECONDS,
+        ),
+      ),
       keepAwake: timer.keepAwake !== false,
       haptics: timer.haptics !== false,
     },
     sound: {
       muted: sound.muted === true,
       masterVolume: clamp(Number(sound.masterVolume ?? 0.8), 0, 1),
+      // A fixed set, not a range: anything not on the list falls back to the
+      // default rather than being clamped into a value nothing can produce.
+      alarmRepeats: ALARM_REPEAT_CHOICES.includes(
+        Number(sound.alarmRepeats) as AlarmRepeats,
+      )
+        ? (Number(sound.alarmRepeats) as AlarmRepeats)
+        : DEFAULT_SETTINGS.sound.alarmRepeats,
       bypassSilentSwitch: sound.bypassSilentSwitch !== false,
       cues: {
         tick: coerceCue(cues.tick, DEFAULT_SETTINGS.sound.cues.tick),
@@ -124,7 +179,7 @@ function loadInitial(): Settings {
   if (typeof window === "undefined") return DEFAULT_SETTINGS;
   const envelope = readEnvelope(STORAGE_KEYS.settings);
   if (!envelope) return DEFAULT_SETTINGS;
-  return migrateSettings(envelope.data);
+  return migrateSettings(envelope.data, envelope.v);
 }
 
 export const settingsStore = createStore<Settings>(loadInitial());
@@ -135,7 +190,7 @@ settingsStore.subscribe(() => write(settingsStore.get()));
 
 if (typeof window !== "undefined") {
   subscribeToKey(STORAGE_KEYS.settings, (envelope) => {
-    if (envelope) settingsStore.set(migrateSettings(envelope.data));
+    if (envelope) settingsStore.set(migrateSettings(envelope.data, envelope.v));
   });
 }
 
@@ -175,9 +230,10 @@ export function toggleMuted(): void {
 }
 
 export function updateCue(cueId: CueId, next: SoundSource): void {
+  const cue = normaliseCue(next);
   settingsStore.set((prev) => ({
     ...prev,
-    sound: { ...prev.sound, cues: { ...prev.sound.cues, [cueId]: next } },
+    sound: { ...prev.sound, cues: { ...prev.sound.cues, [cueId]: cue } },
   }));
 }
 

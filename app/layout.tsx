@@ -12,7 +12,7 @@ const geistSans = Geist({
 export const metadata: Metadata = {
   title: "Rummikub Turn Timer",
   description:
-    "Tap anywhere to reset the turn. Ticks at 3, 2, 1 and sounds the alarm at zero.",
+    "Tap anywhere to reset the turn. Three rising tones at 3, 2, 1, then the alarm at zero.",
   applicationName: "Turn Timer",
   appleWebApp: {
     capable: true,
