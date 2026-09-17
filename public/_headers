@@ -1,0 +1,13 @@
+# Cloudflare Pages / Workers Static Assets reads this file; Next copies public/
+# through to out/ verbatim. Ignored by Vercel — see vercel.json for that.
+
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  Service-Worker-Allowed: /
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json
+  Cache-Control: public, max-age=0, must-revalidate
+
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable

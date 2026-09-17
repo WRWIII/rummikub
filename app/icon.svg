@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="felt" cx="50%" cy="38%" r="75%">
+      <stop offset="0%" stop-color="#17553f"/>
+      <stop offset="55%" stop-color="#0e3b2e"/>
+      <stop offset="100%" stop-color="#072620"/>
+    </radialGradient>
+    <linearGradient id="face" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0%" stop-color="#fdfaf3"/>
+      <stop offset="60%" stop-color="#f1e6ce"/>
+      <stop offset="100%" stop-color="#e0d0af"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="108" fill="url(#felt)"/>
+
+  <!-- tile drop shadow -->
+  <rect x="112.63999999999999" y="78.2336" width="286.72" height="382.29333333333335" rx="45.87520000000001"
+        fill="#000" opacity="0.32"/>
+  <!-- tile body -->
+  <rect x="112.63999999999999" y="64.85333333333332" width="286.72" height="382.29333333333335" rx="45.87520000000001" fill="url(#face)"/>
+  <!-- top bevel highlight -->
+  <rect x="129.8432" y="74.41066666666666" width="252.31360000000004" height="19.11466666666667"
+        rx="9.557333333333334" fill="#ffffff" opacity="0.75"/>
+
+  <!-- clock face -->
+  <circle cx="256" cy="233.0624" r="86.016" fill="none" stroke="#c8102e" stroke-width="24.371200000000005"/>
+  <path d="M 256 185.7536 L 256 233.0624 L 294.7072 258.8672"
+        fill="none" stroke="#c8102e" stroke-width="24.371200000000005"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- the small circle real tiles carry under the numeral -->
+  <circle cx="256" cy="376.42240000000004" r="15.769600000000002" fill="#c8102e"/>
+</svg>
